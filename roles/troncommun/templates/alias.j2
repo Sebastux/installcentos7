@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+
+# Alias maj
+alias maj='yum clean all; yum update *yum* rpmfusion* -y --enablerepo=updates-testing --enablerepo=rpmfusion-free-updates-testing --enablerepo=rpmfusion-nonfree-updates-testing; yum -y update'
+
+
+# Réécriture d'alias
+unalias ll 2>/dev/null
+alias ll='ls -lh --color=auto'

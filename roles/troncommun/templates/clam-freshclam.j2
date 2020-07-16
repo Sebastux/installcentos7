@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+
+# Exécution de freshclam comme daemon
+
+[Unit]
+Description = freshclam scanner
+After = network.target
+
+[Service]
+Type = forking
+ExecStart = /usr/bin/freshclam -d -c 1
+Restart = on-failure
+PrivateTmp = true
+
+[Install]
+WantedBy=multi-user.target

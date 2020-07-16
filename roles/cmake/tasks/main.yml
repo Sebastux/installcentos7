@@ -1,0 +1,120 @@
+# Installation de cmake par compilation des sources en local
+---
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/cmake.fact
+  register: operation
+
+#***************************** Préparation *************************************
+- name: Ajout des packages manquant.
+  yum:
+    name: "{{ liste_fichier }}"
+    update_cache: yes
+    state: latest
+
+# Création d'un répertoire de travail temporaire
+- name: Création d'un répertoire temporaire de travail.
+  file:
+    path: "{{ rep_travail }}"
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+
+- name: Téléchargement et vérification de cmake version {{ version_cmake }}.
+  get_url:
+      url: "{{ url_fichier }}"
+      dest: "{{ rep_travail }}"
+      owner: root
+      group: root
+      checksum: "{{ hash_fichier }}"
+
+- name: Décompression de l'archive en cours sur le poste cible.
+  unarchive:
+    remote_src: yes
+    src: "{{ chemin_fichier }}"
+    dest: "{{ rep_travail }}"
+    owner: root
+    group: root
+    mode: 0600
+
+#***************************** Compilation *************************************
+- name: Copie du script de configuration de la compilation.
+  template:
+    src: templates/compile.j2
+    dest: "{{ chemin_sources }}/compile.sh"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Exécution du script de configuration.
+  shell: ./compile.sh
+  args:
+    chdir: "{{ chemin_sources }}"
+
+#***************************** Nettoyage ***************************************
+- name: Suppression du répetoire temporaire de travail.
+  file:
+    path: "{{ rep_travail }}"
+    state: absent
+
+#***************************** Fichiers facts***********************************
+- name: Gestion d'erreur de copie de template.
+  block:
+    - name: Création du fichier facts (playbook).
+      template:
+        src: ../ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/cmake.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  rescue:
+    - name: Création du fichier facts (site).
+      template:
+        src: ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/cmake.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  when: not operation.stat.exists
+
+- name: Création du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/cmake.fact
+    section: install
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'cmake_version', valeur: "{{ version_cmake }}" }
+    - {option: 'jour_installation', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_installation', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_installation', valeur: "{{ ansible_date_time.time }}" }
+  when: not operation.stat.exists
+
+- name: Mise à jour du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/cmake.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'cmake_version', valeur: "{{ version_cmake }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+  when: operation.stat.exists
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

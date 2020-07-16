@@ -1,0 +1,21 @@
+---
+version_role: 1.2.0
+version_gcc: 9.3.0
+checksum_fic: "sha512:3e9b865354a4306b33b1dd90b58c230120d668b3e26bd4369967e84ff00adbbfb822a0ade340fdd248dbd07bcf326b262060873339bfc5b4c3773ad1be88ab33"
+rep_travail: /root/travail
+rep_gcc: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+fic_gcc: "{{ rep_travail }}/gcc-{{ version_gcc }}.tar.gz"
+url_gcc: "ftp://ftp.lip6.fr/pub/gcc/releases/gcc-{{ version_gcc }}/gcc-{{ version_gcc }}.tar.gz"
+
+liste_install: [ 'zlib-devel.x86_64', 'mawk', 'gawk', 'gcc-gnat.x86_64', 'texinfo',
+                 'byacc', 'bison', 'm4', 'flex', 'expect', 'gcc-gfortran', 'gcc-go',
+                 'dejagnu', 'guile', 'guile-devel', 'libffi-devel', 'libstdc++-devel',
+                 'gdb', 'gzip', 'zstd', 'autoconf', 'automake', 'gettext', 'gettext-devel',
+                 'gettext-common-devel', 'gperf', 'tcl', 'tcl-devel', 'autogen', 'texlive*',
+                 'diffutils', 'patch' ]
+
+liste_depots: [ 'centos-release-scl' ]
+
+liste_packages: [ 'devtoolset-9' ]
+
+installe_sources: false

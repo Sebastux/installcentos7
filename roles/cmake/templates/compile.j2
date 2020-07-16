@@ -1,0 +1,40 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+
+#==============================================================================
+# Titre            : compile.sh
+# Description      : Script de configuration de cmake
+# Auteur           : MELONI Sébastien
+# Date             : 28/07/2018
+# Modification     : 27/05/2020
+# Version          : 1.20
+# Utilisation      : ./compile.sh
+# Notes            : Ce script est destiné à être lancé par ansible pour
+#                    la configuration de cmake.
+# Version de bash  : 4.2.46
+#==============================================================================
+
+chmod 700 ./configure
+chmod 700 ./bootstrap
+
+{% if operation.stat.exists is sameas false %}
+# Création du lien pour une 1 ére installation.
+alternatives --install /usr/bin/cmake cmake $(which cmake3) 1
+{% endif %}
+
+# Génération du makefile avec changement du répertoire d'installation.
+cmake CMakeLists.txt -DCMAKE_INSTALL_PREFIX={{ chemin_install }}
+
+# Compilation du soft.
+make -j 4
+
+{% if operation.stat.exists is sameas true %}
+# Suppression du lien vers l'ancienne version.
+alternatives --remove cmake {{ chemin_bin }}
+{% endif %}
+# Installation de la nouvelle version.
+make install
+
+# Création du lien vers la nouvelle version et forçage de celle-ci.
+alternatives --install /usr/bin/cmake cmake {{ chemin_bin }} 50
+alternatives --auto cmake

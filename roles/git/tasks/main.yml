@@ -1,0 +1,105 @@
+---
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/git.fact
+  register: operation
+
+- name: Création d'un répertoire de travail temporaire.
+  file:
+    path: "{{ rep_travail }}"
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+
+- name: Installation des dépendances.
+  yum:
+    name: "{{ liste_install }}"
+    update_cache: yes
+    state: latest
+
+- name: Synchronisation du dépot git.
+  git:
+    repo: 'https://github.com/git/git.git'
+    dest: "{{ rep_travail }}"
+    clone: yes
+    update: yes
+
+- name: Création du script d'installation.
+  template:
+    src: templates/installe.j2
+    dest: "{{ rep_travail }}/installe.sh"
+    owner: root
+    group: root
+    backup: no
+    mode: 0700
+
+- name: Exécution du script d'installation de git.
+  shell: ./installe.sh
+  args:
+    chdir: "{{ rep_travail }}"
+
+- name: Suppression du répertoire temporaire de travail.
+  file:
+    path: "{{ rep_travail }}"
+    state: absent
+
+- name: Gestion d'erreur de copie de template.
+  block:
+    - name: Création du fichier facts (playbook).
+      template:
+        src: ../ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/git.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  rescue:
+    - name: Création du fichier facts (site).
+      template:
+        src: ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/git.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  when: not operation.stat.exists
+
+- name: Ajout des informations d'installation dans le fichier facts.
+  ini_file:
+    path: /etc/ansible/facts.d/git.fact
+    section: install
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'git_version', valeur: "{{ version_git }}" }
+    - {option: 'jour_installation', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_installation', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_installation', valeur: "{{ ansible_date_time.time }}" }
+  when: not operation.stat.exists
+
+- name: Ajout des informations de mise à jour dans le fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/git.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'git_version', valeur: "{{ version_git }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+  when: operation.stat.exists
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

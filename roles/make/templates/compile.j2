@@ -1,0 +1,72 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+
+#==============================================================================
+# Titre            : compile.sh
+# Description      : Script de configuration de make
+# Auteur           : MELONI Sébastien
+# Date             : 28/07/2018
+# Modification     : 27/05/2020
+# Version          : 1.20
+# Utilisation      : ./compile.sh
+# Notes            : Ce script est destiné à être lancé par ansible pour
+#                    la configuration de make.
+# Version de bash  : 4.2.46
+#==============================================================================
+
+# Ajout de droits sur un fichier.
+chmod 700 ./configure
+
+{% if operation.stat.exists is sameas false %}
+# Récupération de la version de make car 1 ère installation.
+version=$(make --version | head -1 | cut -d' ' -f 3)
+
+# Ajout du package à la blaclist.
+yum blaclist $(rpm -qa | grep "^make-$version")
+
+# Configuration de la compilation.
+./configure --prefix={{chemin_install }} --with-gnu-ld --with-guile
+
+# Compilation des fichiers sources.
+make -j 4
+
+# Installation.
+make install
+
+# Sauvegarde de l'acienne version.
+mv /usr/bin/make /usr/bin/make2
+
+# Création du lien pour une 1 ére installation.
+alternatives --install /usr/bin/make make /usr/bin/make2 1
+alternatives --install /usr/bin/make make {{ chemin_bin }} 50
+alternatives --auto make
+{% else %}
+#
+# Configuration de la compilation.
+./configure --prefix={{chemin_install }} --with-gnu-ld --with-guile
+
+# Compilation des fichiers sources.
+make -j 4
+
+# Suppression de l'ancienne version.
+rm -fr {{chemin_install }}
+
+# Installationde la nouvelle version.
+make install
+
+{% if (make_fic.stat.executable is sameas true) and (make_fic.stat.islnk is sameas false) %}
+# Si je fichier make est un binaire alors suppression de l'ancienne sauvegarde et sauvegarde du binaire en cours.
+rm -f /usr/bin/make2
+mv /usr/bin/make /usr/bin/make2
+{% endif %}
+
+{% if (make_fic.stat.executable is sameas true) and (make_fic.stat.islnk is sameas true) %}
+# Si je fichier make est un symlink alors suppression de celui-ci pour une remise au propre avec la nouvelle version compilée.
+rm -f /usr/bin/make
+{% endif %}
+
+# Génération et configuration d'un nouveau symlink.
+alternatives --install /usr/bin/make make /usr/bin/make2 1
+alternatives --install /usr/bin/make make {{ chemin_bin }} 50
+alternatives --auto make
+{% endif %}

@@ -1,0 +1,91 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+
+#==============================================================================
+# Titre            : installe.sh
+# Description      : Script de configuration de la compilation de python3
+# Auteur           : MELONI Sébastien
+# Date             : 06/05/2020
+# Modification     : 27/05/2020
+# Version          : 1.20
+# Utilisation      : ./installe.sh
+# Notes            : Script construit par jinja2 et lancé par ansible.
+# Version de bash  : 4.2.46
+#==============================================================================
+
+# Déclaration de variables
+version_python=""
+chemin_python=""
+chemin_pip=""
+
+# Modification de droits
+chmod 700 ./configure
+
+# Récupération de la version de python3
+version_python=$(rpm -qa | grep python3-3 | cut -d'-' -f 2 | cut -d'.' -f 1-2)
+
+# Mise à jour de l'indexation des fichiers sur le disque dur.
+updatedb
+
+# Récupération du chemin du binaire
+chemin_python=$(which python$version_python)
+chemin_pip=$(which pip$version_python)
+
+# Suppression du lien par défault
+rm -f /usr/bin/python3 /usr/bin/pip3
+
+{% if operation.stat.exists is sameas true %}
+# Suppression des anciens liens symboliques.
+rm -f {{ chemin_install }}/bin/python3
+rm -f {{ chemin_install }}/bin/python
+rm -f {{ chemin_install }}/bin/python-config
+rm -f {{ chemin_install }}/bin/pydoc
+rm -f {{ chemin_install }}/bin/idle
+rm -f /usr/bin/python38
+rm -f {{ chemin_install }}/bin/pip3
+rm -f {{ chemin_install }}/bin/pip
+{% endif %}
+# Création du lien pour la version système de python et pip
+alternatives --install /usr/bin/python3 python3 $chemin_python 1
+alternatives --install /usr/bin/pip3 pip3 $chemin_pip 1
+
+# Configuration de la compilation.
+./configure --prefix={{ chemin_install }} --enable-optimizations \
+            --with-lto --with-system-ffi --with-computed-gotos \
+            --enable-loadable-sqlite-extensions --with-doc-strings \
+            --with-ensurepip=install
+
+# Compilation
+make -j 4
+
+# Installation
+make install
+
+# Création de liens symboliques
+ln -s {{ chemin_install }}/bin/python{{ branche_python }} {{ chemin_install }}/bin/python3
+ln -s {{ chemin_install }}/bin/python{{ branche_python }} {{ chemin_install }}/bin/python
+ln -s {{ chemin_install }}/bin/python{{ branche_python }}-config {{ chemin_install }}/bin/python-config
+ln -s {{ chemin_install }}/bin/pydoc{{ branche_python }} {{ chemin_install }}/bin/pydoc
+ln -s {{ chemin_install }}/bin/idle{{ branche_python }} {{ chemin_install }}/bin/idle
+ln -s {{ chemin_install }}/bin/python{{ branche_python }} /usr/bin/python38
+ln -s {{ chemin_install }}/bin/pip{{ branche_python }} {{ chemin_install }}/bin/pip3
+ln -s {{ chemin_install }}/bin/pip{{ branche_python }} {{ chemin_install }}/bin/pip
+
+# Ajout des liens dans alternatives
+alternatives --install /usr/bin/python3 python3 {{ chemin_bin }} 50
+alternatives --auto python3
+
+# Création du lien vers pip3
+alternatives --install /usr/bin/pip3 pip3 {{ chemin_pip }} 50
+alternatives --auto pip3
+
+# Mise à jour de pip et setuptools et ajout de wheel.
+python3 -m pip3 install pip setuptools wheel --upgrade
+
+{% if operation.stat.exists is sameas false %}
+# Blacklistage du packege python3 lors de la 1 ère installation.
+yum versionlock $(rpm -qa | grep python3-3)
+
+# Configuration de l'auto complétion pour pip3 lors de la 1 ère installation.
+pip3 completion --bash >> /root/.profile
+{% endif %}

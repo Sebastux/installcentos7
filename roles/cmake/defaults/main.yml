@@ -1,0 +1,15 @@
+---
+version_role: 1.2.1
+version_cmake: 3.17.3
+rep_travail: /root/travail
+url_fichier: "https://github.com/Kitware/CMake/releases/download/v{{ version_cmake }}/cmake-{{ version_cmake }}.tar.gz"
+nom_fichier: "cmake-{{ version_cmake }}.tar.gz"
+chemin_fichier: "{{ rep_travail }}/{{ nom_fichier }}"
+rep_sources: "cmake-{{ version_cmake }}"
+chemin_sources: "{{ rep_travail }}/{{ rep_sources }}"
+chemin_install: /opt/compilateurs/cmake
+chemin_bin: "{{ chemin_install }}/bin/cmake"
+hash_fichier: "sha256:0bd60d512275dc9f6ef2a2865426a184642ceb3761794e6b65bff233b91d8c40"
+liste_fichier: [ 'libcurl-devel', 'expat-devel', 'jsoncpp-devel', 'zlib-devel',
+                 'xz-devel', 'libarchive-devel', 'rhash-devel', 'openssl-devel',
+                 'cmake3', 'cmake3-data', 'extra-cmake-modules' ]

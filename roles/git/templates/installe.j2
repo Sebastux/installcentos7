@@ -1,0 +1,61 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+
+#==============================================================================
+# Titre            : installe.sh
+# Description      : Script de configuration de GCC
+# Auteur           : MELONI Sébastien
+# Date             : 06/05/2020
+# Modification     : 27/05/2020
+# Version          : 1.20
+# Utilisation      : ./installe.sh
+# Notes            : Script lancé par ansible.
+# Version de bash  : 4.4.12
+#==============================================================================
+
+# Affectation des droits root
+chown -R root: *
+
+# Création du fichier configure
+make configure
+
+# Affectation des droits d'éxécution au fichier configure
+chmod 700 ./configure
+
+{% if operation.stat.exists is sameas false %}
+# Suppression de git et remplacement par celui compilé
+rpm -e --nodeps git
+
+# Configuration de la compilation
+./configure --prefix={{ chemin_install }} --with-openssl --with-libpcre2 \
+            --with-curl --with-expat --with-editor=vim \
+            --with-shell=/bin/bash --with-python=$(which python3)
+
+# Compilation des fichiers sources et des fichiers d'aides
+make all doc -j 4
+
+# Installation.
+make install install-doc
+
+# Création du lien pour une 1 ére installation.
+alternatives --install /usr/bin/git git {{ chemin_bin }} 50
+{% else %}
+# Création du fichier make
+./configure --prefix={{ chemin_install }} --with-openssl --with-libpcre2 \
+            --with-curl --with-expat --with-editor=vim \
+            --with-shell=/bin/bash --with-python=$(which python3)
+
+# Compilation
+make all doc -j 4
+
+# Suppression de l'ancienne version.
+rm -fr {{ chemin_install }}
+
+# Installation de GIT et de la doc
+make install install-doc
+
+# Création du lien vers la nouvelle version.
+rm -f /usr/bin/git
+alternatives --install /usr/bin/git git {{ chemin_bin }} 50
+alternatives --auto git
+{% endif %}

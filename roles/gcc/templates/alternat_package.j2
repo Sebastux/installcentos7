@@ -1,0 +1,95 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+
+#==============================================================================
+# Titre            : alternat_package.sh
+# Description      : Script de création des liens GCC
+# Auteur           : MELONI Sébastien
+# Date             : 06/05/2020
+# Modification     : 27/05/2020
+# Version          : 1.20
+# Utilisation      : ./alternat_package.sh
+# Notes            : Ce script est destiné à être lancé par ansible pour
+#                    la configuration de GCC.
+# Version de bash  : 4.2.46
+#==============================================================================
+
+{% if operation.stat.exists is sameas false %}
+# Récupération de la version de gcc et de g++
+version=$(gcc --version | grep gcc | cut -d' ' -f 3)
+echo "La version installée de gcc est la : "$version"."
+
+# Ajout des packages gcc et g++ dans la blacklist.
+echo "Blaclistage des packages gcc en cours."
+yum versionlock $(rpm -qa | grep "^gcc-$version*")
+yum versionlock $(rpm -qa | grep "^gcc-c++-$version*")
+yum versionlock $(rpm -qa | grep "^gcc-gfortran-$version*")
+
+# Sauvegarde des anciens binaire. Ils seront réutilisé grace aux liens.
+echo "Sauvegarde des anciens binaire."
+mv /usr/bin/gcc /usr/bin/gcc2
+mv /usr/bin/g++ /usr/bin/g++2
+mv /usr/bin/gcov /usr/bin/gcov2
+mv /usr/bin/gfortran /usr/bin/gfortran2
+echo ""
+
+# Création des liens pour une 1 ére installation.
+echo "Création des liens pour GCC."
+alternatives --install /usr/bin/gcc gcc /usr/bin/gcc2 1
+alternatives --install /usr/bin/gcc gcc /opt/rh/devtoolset-9/root/usr/bin/gcc 50
+alternatives --auto gcc
+echo ""
+echo "Création des liens pour g++."
+alternatives --install /usr/bin/g++ g++ /usr/bin/g++2 1
+alternatives --install /usr/bin/g++ g++ /opt/rh/devtoolset-9/root/usr/bin/g++ 50
+alternatives --auto g++
+echo ""
+echo "Création des liens pour gcov."
+alternatives --install /usr/bin/gcov gcov /usr/bin/gcov2 1
+alternatives --install /usr/bin/gcov gcov /opt/rh/devtoolset-9/root/usr/bin/gcov 50
+alternatives --auto gcov
+echo ""
+echo "Création des liens pour gfortran."
+alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran2 1
+alternatives --install /usr/bin/gfortran gfortran /opt/rh/devtoolset-9/root/usr/bin/gfortran 50
+alternatives --auto gfortran
+
+{% else %}
+  {% if gcc_fic.stat.islnk is sameas false %}
+# Si ce n'est pas une 1 ére installation, alors tester la nature de gcc.
+# Si c'est un exe alors supprimer l'ancienne version et sauvegarder la version actuelle
+rm -f /usr/bin/gcc2 /usr/bin/g++2 /usr/bin/gcov2 /usr/bin/gcc-gfortran2
+mv /usr/bin/gcc /usr/bin/gcc2
+mv /usr/bin/g++ /usr/bin/g++2
+mv /usr/bin/gcov /usr/bin/gcov2
+mv /usr/bin/gcc-gfortran /usr/bin/gcc-gfortran2
+
+alternatives --install /usr/bin/gcc gcc /usr/bin/gcc2 1
+alternatives --install /usr/bin/gcc gcc /opt/rh/devtoolset-9/root/usr/bin/gcc 50
+alternatives --auto gcc
+alternatives --install /usr/bin/g++ g++ /usr/bin/g++2 1
+alternatives --install /usr/bin/g++ g++ /opt/rh/devtoolset-9/root/usr/bin/g++ 50
+alternatives --auto g++
+alternatives --install /usr/bin/gcov gcov /usr/bin/gcov2 1
+alternatives --install /usr/bin/gcov gcov /opt/rh/devtoolset-9/root/usr/bin/gcov 50
+alternatives --auto gcov
+alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran2 1
+alternatives --install /usr/bin/gfortran gfortran /opt/rh/devtoolset-9/root/usr/bin/gfortran 50
+alternatives --auto gfortran
+  {% else %}
+# Si le fichier est un lsymlink alors raffraichir la configuration.
+rm -f /usr/bin/gcc /usr/bin/g++ /usr/bin/gcov /usr/bin/gfortran
+alternatives --install /usr/bin/gcc gcc /usr/bin/gcc2 1
+alternatives --install /usr/bin/gcc gcc /opt/rh/devtoolset-9/root/usr/bin/gcc 50
+alternatives --auto gcc
+alternatives --install /usr/bin/g++ g++ /usr/bin/g++2 1
+alternatives --install /usr/bin/g++ g++ /opt/rh/devtoolset-9/root/usr/bin/g++ 50
+alternatives --auto g++
+alternatives --install /usr/bin/gcov gcov /usr/bin/gcov2 1
+alternatives --install /usr/bin/gcov gcov /opt/rh/devtoolset-9/root/usr/bin/gcov 50
+alternatives --auto gcov
+alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran2 1
+alternatives --install /usr/bin/gfortran gfortran /opt/rh/devtoolset-9/root/usr/bin/gfortran 50
+alternatives --auto gfortran
+  {% endif %}
+{% endif %}

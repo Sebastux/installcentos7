@@ -1,0 +1,17 @@
+---
+# Choix du compilateur à installer.
+version_role: "1.4.0"
+
+packages_commun: [ 'expect', 'pexpect', 'screen', 'tree', 'unrar', "@Outils de développement", 'cmake3', 'cmake3-data',
+                   'extra-cmake-modules', 'python2-pip', 'mlocate', 'yum-langpacks', 'yum-plugin-fastestmirror',
+                   'yum-plugin-remove-with-leaves', 'yum-plugin-show-leaves', 'yum-plugin-verify', 'yum-plugin-versionlock',
+                   'yum-cron', 'vim-common', 'vim-enhanced', 'vim-filesystem', 'vim-minimal', 'chrony', 'p7zip-plugins',
+                   'p7zip', 'p7zip-doc', 'fail2ban-all', 'clamav-server', 'clamav-data', 'clamav-update', 'clamav-filesystem',
+                   'clamav', 'clamav-scanner-systemd', 'clamav-lib', 'clamav-server-systemd', 'libselinux-python', 'htop',
+                   'iotop', 'iftop', 'wget', 'net-tools', 'deltarpm' ]
+
+liste_depots: ['epel-release',
+               "https://download1.rpmfusion.org/free/el/rpmfusion-free-release-{{ ansible_distribution_major_version }}.noarch.rpm" ,
+               "https://download1.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm" ]
+
+packages_pip: [ 'pip', 'setuptools', 'wheel' ]

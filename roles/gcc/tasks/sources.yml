@@ -1,0 +1,166 @@
+# Installation de gcc par compilation.
+---
+- debug:
+    msg: Installation de GCC par compilation.
+
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/gcc.fact
+  register: operation
+
+#***************************** Préparation *************************************
+- name: Création d'un répertoire de travail temporaire.
+  file:
+    path: "{{ rep_travail }}"
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+
+- name: Téléchargement de GCC version {{ version_gcc }}
+  get_url:
+    url: "{{ url_gcc }}"
+    dest: "{{ fic_gcc }}"
+    mode: '0440'
+    owner: root
+    group: root
+    checksum: "{{ checksum_fic }}"
+
+- name: Décompression de l'archive tar en cours.
+  unarchive:
+    src: "{{ fic_gcc }}"
+    dest: "{{ rep_travail }}"
+    remote_src: yes
+    owner: root
+    group: root
+
+- name: Installation des bibliothéques.
+  shell: contrib/download_prerequisites
+  args:
+    chdir: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+    executable: /bin/bash
+
+- name: Installation des dépendances.
+  yum:
+    name: "{{ liste_install }}"
+    update_cache: yes
+    state: latest
+
+#***************************** Configuration ***********************************
+- name: Envoi du script de configuration.
+  copy:
+    src: files/config.sh
+    dest: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Exécution du script de configuration.
+  script: config.sh
+  args:
+    chdir: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+
+#***************************** compilation *************************************
+- name: Envoi du script de compilation.
+  copy:
+    src: files/compile.sh
+    dest: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Exécution du script de compilation de GCC.
+  script: compile.sh
+  args:
+    chdir: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+
+#***************************** Installation ************************************
+- name: "Suppression du répertoire contenant l'ancienne version {{ ansible_local.tronccommuncentos.gcc.gcc_version }}."
+  file:
+    path: "/opt/compilateurs/gcc"
+    state: absent
+  when: operation.stat.exists
+
+- name: Envoi du script d'installation.
+  copy:
+    src: files/install.sh
+    dest: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Test d'opération pour alternatives.
+  stat:
+    path: /usr/bin/gcc
+  register: gcc_fic
+
+- name: Exécution du script d'installation de GCC.
+  script: install.sh
+  args:
+    chdir: "{{ rep_travail }}/gcc-{{ version_gcc }}"
+
+#***************************** Nettoyage ***************************************
+- name: Suppression du répertoire temporaire de travail.
+  file:
+    path: "{{ rep_travail }}"
+    state: absent
+
+- name: Gestion d'erreur de copie de template.
+  block:
+    - name: Création du fichier facts (playbook).
+      template:
+        src: ../ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/gcc.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  rescue:
+    - name: Création du fichier facts (site).
+      template:
+        src: ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/gcc.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  when: not operation.stat.exists
+
+- name: Création du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/gcc.fact
+    section: install
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'gcc_version', valeur: "{{ version_gcc }}" }
+    - {option: 'jour_installation', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_installation', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_installation', valeur: "{{ ansible_date_time.time }}" }
+  when: not operation.stat.exists
+
+- name: Mise à jour du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/gcc.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'gcc_version', valeur: "{{ version_gcc }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+  when: operation.stat.exists
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

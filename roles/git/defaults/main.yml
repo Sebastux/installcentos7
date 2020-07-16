@@ -1,0 +1,7 @@
+---
+version_role: "1.2.0"
+version_git: "dépot"
+liste_install: [ 'pcre2-devel', 'asciidoc', 'xmlto-xhtml', 'xmlto', 'xmltoman' ]
+rep_travail: /root/travail
+chemin_install: /opt/outils/git
+chemin_bin: "{{ chemin_install }}/bin/git"

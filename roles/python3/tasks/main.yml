@@ -1,0 +1,127 @@
+# Installation de python 3 par compilation
+---
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/python3.fact
+  register: operation
+
+# Création du répertoire de travail
+- name: Création du répertoire de travail.
+  file:
+    path: /root/travail
+    owner: root
+    group: root
+    mode: 0744
+    state: directory
+
+# Ajout de packages
+- name: Installation des packages nécessaire à la compilation.
+  yum:
+    name: "{{ liste_packages }}"
+    state: latest
+    update_cache: yes
+
+# Téléchargement des fichiers sources
+- name: Téléchargement des fichiers sources de python version {{ version_python }}.
+  get_url:
+    url: https://www.python.org/ftp/python/{{ version_python }}/Python-{{ version_python }}.tar.xz
+    dest: /root/travail/Python-{{ version_python }}.tar.xz
+    checksum: "{{ hash_python }}"
+    owner: root
+    group: root
+    mode: 0440
+
+- name: Décompression de l'archive Python-{{ version_python }}.tgz en cours.
+  unarchive:
+    src: /root/travail/Python-{{ version_python }}.tar.xz
+    dest: /root/travail/
+    remote_src: yes
+    owner: root
+    group: root
+    mode: 0440
+
+- name: Création du script de configuration de la compilation.
+  template:
+    src: templates/installe.j2
+    dest: "/root/travail/Python-{{ version_python }}/installe.sh"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: "Installation de python3 version {{ version_python }}."
+  shell: ./installe.sh
+  args:
+    chdir: /root/travail/Python-{{ version_python }}
+    executable: /bin/bash
+
+- name: Mise à jour des packages avec pip3
+  pip:
+    executable: "{{ chemin_pip }}"
+    name: "{{ liste_pip }}"
+    state: latest
+  ignore_errors: true
+
+- name: Suppression du répertoire de travail.
+  file:
+    path: /root/travail
+    state: absent
+
+- name: Gestion d'erreur de copie de template.
+  block:
+    - name: Création du fichier facts (playbook).
+      template:
+        src: ../ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/python3.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  rescue:
+    - name: Création du fichier facts (site).
+      template:
+        src: ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/python3.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  when: not operation.stat.exists
+
+- name: remplissage du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/python3.fact
+    section: install
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'python_version', valeur: "{{ version_python }}" }
+    - {option: 'jour_installation', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_installation', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_installation', valeur: "{{ ansible_date_time.time }}" }
+  when: not operation.stat.exists
+
+- name: Mise à jour du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/python3.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'python_version', valeur: "{{ version_python }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+  when: operation.stat.exists
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

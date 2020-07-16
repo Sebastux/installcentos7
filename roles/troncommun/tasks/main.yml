@@ -1,0 +1,13 @@
+---
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/tronccommun.fact
+  register: operation
+
+- name: Installation du tronc commun en cours.
+  import_tasks: install.yml
+  when: not operation.stat.exists
+
+- name: Mise à jour du tronc commun en cours.
+  import_tasks: maj.yml
+  when: operation.stat.exists

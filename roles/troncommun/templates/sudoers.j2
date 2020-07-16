@@ -1,0 +1,99 @@
+##
+# {{ ansible_managed }}
+##
+
+##
+# Configuration générale de la commande.
+##
+Defaults  env_reset, env_keep=LESSSECURE
+Defaults  requiretty
+Defaults  use_pty
+Defaults  logfile="/var/log/sudostux.log"
+Defaults  lecture="once"
+Defaults  badpass_message="Le mot de passe est incorrect, veuillez réessayer"
+Defaults  mail_badpass
+Defaults  insults
+Defaults  passwd_tries=3
+Defaults  passwd_timeout=5
+
+##
+# Création d'alias utilisateur
+##
+User_Alias ADMINS = administrateur
+
+##
+# Autorisation total pour root
+##
+root ALL = (ALL) ALL
+
+##
+# Création d'alias commandes
+##
+Cmnd_Alias	KILL = /usr/bin/kill, /usr/bin/pkill
+Cmnd_Alias	SHUTDOWN = /usr/sbin/shutdown, /usr/sbin/poweroff
+Cmnd_Alias	HALT = /usr/sbin/halt
+Cmnd_Alias	REBOOT = /usr/sbin/reboot
+Cmnd_Alias	SHELLS = /sbin/sh, /usr/bin/sh, /usr/bin/csh, /usr/bin/ksh, \
+			 /usr/local/bin/tcsh, /usr/bin/rsh, /usr/local/bin/zsh
+Cmnd_Alias	SU = /usr/bin/su*
+Cmnd_Alias BLOCK = !/usr/sbin/visudo, !/bin/nano /etc/sudoers, !/bin/nano sudoers, \
+                   !/usr/bin/vi /etc/sudoers, !/usr/bin/vi sudoers \
+                   !/usr/bin/vim /etc/sudoers, !/usr/bin/vim sudoers
+Cmnd_Alias GESTFIC = /usr/bin/vi, /usr/bin/vim, /usr/bin/rm *, /usr/bin/cp*, /usr/bin/mv*
+
+Cmnd_Alias GESTCOMPTE = /usr/sbin/useradd*, /usr/sbin/adduser*, /usr/bin/passwd*, \
+                        /usr/sbin/usermod*, /usr/sbin/groupadd*, /usr/sbin/groupmod*\
+												/usr/sbin/groupdel*, /usr/sbin/userdel*
+
+##
+# Gestion des droits sur les commandes
+##
+ADMINS ALL=(root) REBOOT
+ADMINS ALL=(root) SHUTDOWN
+ADMINS ALL=(root) !HALT
+ADMINS ALL=(root) !SU
+ADMINS ALL=(root) !GESTFIC
+ADMINS ALL=(root) BLOCK
+ADMINS ALL=(root) !KILL
+ADMINS ALL=(root) !SHELLS
+ADMINS ALL=(root) !GESTCOMPTE
+ADMINS ALL=(root) /usr/bin/freshclam
+ADMINS ALL=(root) /usr/bin/clamscan
+ADMINS ALL=(root) /usr/bin/yum clean all
+ADMINS ALL=(root) /usr/bin/yum update
+ADMINS ALL=(root) /usr/bin/yum update -y
+ADMINS ALL=(root) !/usr/bin/yum install *
+ADMINS ALL=(root) !/usr/bin/rpm*
+
+
+##
+# Gestion des droits sur les services
+##
+ADMINS ALL=(root) /usr/bin/systemctl restart NetworkManager
+ADMINS ALL=(root) /usr/bin/systemctl status NetworkManager
+ADMINS ALL=(root) !/usr/bin/systemctl stop NetworkManager
+ADMINS ALL=(root) /usr/bin/systemctl restart sshd
+ADMINS ALL=(root) /usr/bin/systemctl status sshd
+ADMINS ALL=(root) !/usr/bin/systemctl stop sshd
+ADMINS ALL=(root) /usr/bin/systemctl status fail2ban
+ADMINS ALL=(root) /usr/bin/systemctl restart fail2ban
+ADMINS ALL=(root) !/usr/bin/systemctl stop fail2ban
+ADMINS ALL=(root) /usr/bin/systemctl status clamav-freshclam
+ADMINS ALL=(root) /usr/bin/systemctl restart clamav-freshclam
+ADMINS ALL=(root) !/usr/bin/systemctl stop clamav-freshclam
+ADMINS ALL=(root) /usr/bin/systemctl status clamd@scan
+ADMINS ALL=(root) /usr/bin/systemctl restart clamd@scan
+ADMINS ALL=(root) !/usr/bin/systemctl stop clamd@scan
+ADMINS ALL=(root) /usr/bin/systemctl status yum-cron
+ADMINS ALL=(root) /usr/bin/systemctl restart yum-cron
+ADMINS ALL=(root) !/usr/bin/systemctl stop yum-cron
+ADMINS ALL=(root) /usr/bin/systemctl status named
+ADMINS ALL=(root) /usr/bin/systemctl restart named
+ADMINS ALL=(root) !/usr/bin/systemctl stop named
+ADMINS ALL=(root) /usr/bin/systemctl status samba
+ADMINS ALL=(root) /usr/bin/systemctl restart samba
+ADMINS ALL=(root) !/usr/bin/systemctl stop samba
+
+#================================================== Sauve Temp ===========================
+
+# hacker10 ALL= (root) NOEXEC: /bin/less /var/log/*

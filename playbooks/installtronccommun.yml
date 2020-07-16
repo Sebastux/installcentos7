@@ -1,0 +1,7 @@
+---
+- name: Installation / mise à jour du tronc commun en cours.
+  hosts: "{{ cible }}"
+  remote_user: root
+  gather_facts: yes
+  roles:
+    - troncommun

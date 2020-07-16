@@ -1,0 +1,13 @@
+---
+version_role: 1.2.0
+version_python: 3.8.3
+branche_python: 3.8
+hash_python: md5:3000cf50aaa413052aef82fd2122ca78
+liste_packages: [ 'zlib-devel', 'bzip2-devel', 'openssl-devel', 'ncurses-devel',
+                  'sqlite-devel', 'readline-devel', 'tk-devel', 'gdbm-devel',
+                  'db4-devel', 'libpcap-devel', 'xz-devel', 'expat-devel',
+                  'libffi-devel', 'mpdecimal-devel' ]
+liste_pip: ['pip', 'setuptools', 'wheel']
+chemin_install: /opt/outils/python3
+chemin_bin: "{{ chemin_install }}/bin/python3"
+chemin_pip: "{{ chemin_install }}/bin/pip3"

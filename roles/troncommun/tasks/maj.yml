@@ -1,0 +1,174 @@
+---
+- debug:
+    msg:
+      - Mise à jour de la machine en cours.
+      - "Utilisation du port ssh n°: {{ ansible_port }}"
+
+- name: Arret des services fail2ban yum cron et clamav.
+  systemd:
+    name: "{{ item.service }}"
+    state: stopped
+    enabled: "{{ item.boot }}"
+  with_items:
+    - { service: 'yum-cron', boot: 'yes' }
+    - { service: 'fail2ban', boot: 'yes' }
+    - { service: 'clamav-freshclam', boot: 'yes' }
+    - { service: 'clamd@scan', boot: 'yes' }
+  ignore_errors: yes
+
+- name: Suppression du dépot CdRom.
+  file:
+    path: /etc/yum.repos.d/CentOS-Media.repo
+    state: absent
+
+- name: Création du répertoire pour clamav.
+  file:
+    path: /var/run/clamdsock
+    owner: root
+    group: virusgroup
+    mode: 0644
+    state: directory
+
+- name: Suppression des clés ssh rsa et dsa.
+  file:
+    path: /etc/ssh/"{{ item }}"
+    state: absent
+  with_items:
+    - ssh_host_rsa_key
+    - ssh_host_rsa_key.pub
+    - ssh_host_dsa_key
+    - ssh_host_dsa_key.pub
+
+- name: Ajout de paramètres au fichier de configuration de yum.
+  ini_file:
+    path: /etc/yum.conf
+    section: main
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+  with_items:
+    - {option: 'clean_requirements_on_remove', valeur: 'True' }
+    - {option: 'fastestmirror', valeur: 'True' }
+    - {option: 'max_parallel_downloads', valeur: '4' }
+    - {option: 'color', valeur: always }
+    - {option: 'color_list_installed_older', valeur: yellow }
+    - {option: 'color_list_installed_newer', valeur: "bold,yellow" }
+    - {option: 'color_list_installed_reinstall', valeur: "dim,cyan" }
+    - {option: 'color_list_installed_running_kernel', valeur: "bold,underline" }
+    - {option: 'color_list_installed_extra', valeur: "bold,red" }
+    - {option: 'color_list_available_upgrade', valeur: "bold,blue" }
+    - {option: 'color_list_available_downgrade', valeur: "dim,magenta" }
+    - {option: 'color_list_available_install', valeur: "bold,cyan" }
+    - {option: 'color_list_available_reinstall', valeur: "bold,underline,green" }
+    - {option: 'color_list_available_running_kernel', valeur: "bold,underline" }
+    - {option: 'color_search_match', valeur: "bold,magenta" }
+    - {option: 'color_update_installed', valeur: "bg:red" }
+    - {option: 'color_update_local', valeur: "dim,green" }
+    - {option: 'color_update_remote', valeur: "bold,green" }
+
+- name: Mise à jour du système.
+  yum:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: Copie des divers templates.
+  template:
+    src: "templates/{{item.fichier }}"
+    dest: "{{item.chemin }}"
+    backup: "{{item.sauve }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - { fichier: 'sshd_f2b.j2', chemin: '/etc/fail2ban/jail.d/sshd.local', sauve: 'no' }
+    - { fichier: 'alias.j2', chemin: '/etc/profile.d/sctuxalias.sh', sauve: 'no' }
+    - { fichier: 'yum.j2', chemin: '/etc/yum/yum-cron.conf', sauve: 'no' }
+    - { fichier: 'clamd.j2', chemin: '/etc/clamd.conf', sauve: 'no' }
+    - { fichier: 'freshclam.j2', chemin: '/etc/freshclam.conf', sauve: 'no' }
+    - { fichier: 'scan.j2', chemin: '/etc/clamd.d/scan.conf', sauve: 'no' }
+    - { fichier: 'clam-freshclam.j2', chemin: '/usr/lib/systemd/system/clam-freshclam.service', sauve: 'no' }
+    - { fichier: 'chrony.j2', chemin: '/etc/chrony.conf', sauve: 'no' }
+    - { fichier: 'warningpip.j2', chemin: '/etc/profile.d/warningpip.conf', sauve: 'no' }
+
+- name: Mise à jour du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/tronccommun.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+
+- name: Ajout d'une règle dans le pare-feu pour chrony.
+  firewalld:
+    service: ntp
+    permanent: True
+    state: enabled
+    immediate: yes
+
+- name: Mise à jour des packages pip2.
+  pip:
+    executable: pip2
+    name: "{{ packages_pip }}"
+    state: latest
+  ignore_errors: yes
+
+- name: Désactivation de selinux.
+  selinux:
+    state: disabled
+
+- name: Mise à jour de l'antivirus.
+  shell: /usr/bin/freshclam
+  args:
+    executable: /bin/bash
+
+- name: Modification du fichier de démarage de l'antivirus.
+  lineinfile:
+    path: "/usr/lib/systemd/system/clamd@.service"
+    regexp: '^ExecStart'
+    line: "ExecStart = /usr/sbin/clamd -c /etc/clamd.conf"
+    owner: root
+    group: root
+    mode: 0644
+    state: present
+
+- name: Configuration du compte administrateur
+  user:
+    state: present
+    name: administrateur
+    comment: "Administrateur"
+    shell: /bin/bash
+    groups: wheel
+    create_home: yes
+    password: "{{ motpasse }}"
+    force: yes
+
+- name: Copie et validation du fichier sudoers pour le compte administrateur.
+  template:
+    src: templates/sudoers.j2
+    dest: /etc/sudoers.d/administrastux
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Création d'une tache de vérification du fs au démarage.
+  file:
+    path: /forcefsck
+    state: touch
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Mise à jour de l'indexation des fichiers.
+  shell: /usr/bin/updatedb
+  args:
+    executable: /bin/bash
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

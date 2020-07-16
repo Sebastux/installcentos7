@@ -1,0 +1,8 @@
+---
+- name: Installation de GCC par compilation.
+  import_tasks: sources.yml
+  when: installe_sources
+
+- name: Installation de GCC par packages.
+  import_tasks: packages.yml
+  when: not installe_sources

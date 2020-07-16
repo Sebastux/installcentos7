@@ -1,0 +1,129 @@
+# Installation de make à l'aide des sources compilés en local.
+---
+- name: Test de l'opération à effectuer.
+  stat:
+    path: /etc/ansible/facts.d/make.fact
+  register: operation
+
+- name: Test du type de fichier (make).
+  stat:
+    path: /usr/bin/make
+  register: make_fic
+
+#***************************** Préparation *************************************
+- name: Ajout des packages manquant.
+  yum:
+    name: "{{ liste_package }}"
+    update_cache: yes
+    state: latest
+
+# Création d'un répertoire de travail
+- name: Création d'un répetoire temporaire de travail.
+  file:
+    path: /root/travail
+    state: directory
+    mode: 0700
+    owner: root
+    group: root
+
+- name: Téléchargements de make version {{ version_make }}.
+  get_url:
+      url: "http://ftp.gnu.org/gnu/make/make-{{ version_make }}.tar.gz"
+      dest: /root/travail/
+      owner: root
+      group: root
+
+- name: Décompression de l'archive tar en cours sur le poste cible.
+  unarchive:
+    remote_src: yes
+    src: "/root/travail/make-{{ version_make }}.tar.gz"
+    dest: /root/travail
+    owner: root
+    group: root
+    mode: 0600
+
+#***************************** Compilation *************************************
+- name: Test d'opération pour alternatives.
+  stat:
+    path: /usr/bin/gcc
+  register: make_fic
+
+- name: Copie du script de configuration de la compilation.
+  template:
+    src: templates/compile.j2
+    dest: "/root/travail/make-{{ version_make }}/compile.sh"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Exécution du script de configuration.
+  shell: ./compile.sh
+  args:
+    chdir: "/root/travail/make-{{ version_make }}"
+
+#***************************** Fichier fact ************************************
+- name: Gestion d'erreur de copie de template.
+  block:
+    - name: Création du fichier facts (playbook).
+      template:
+        src: ../ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/make.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  rescue:
+    - name: Création du fichier facts (site).
+      template:
+        src: ficscommun/templates/fact.j2
+        dest: /etc/ansible/facts.d/make.fact
+        owner: root
+        group: root
+        backup: no
+        mode: 0644
+  when: not operation.stat.exists
+
+- name: Création du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/make.fact
+    section: install
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'make_version', valeur: "{{ version_make }}" }
+    - {option: 'jour_installation', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_installation', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_installation', valeur: "{{ ansible_date_time.time }}" }
+  when: not operation.stat.exists
+
+- name: Mise à jour du fichiers de fact.
+  ini_file:
+    path: /etc/ansible/facts.d/make.fact
+    section: maj
+    option: "{{ item.option }}"
+    value: "{{ item.valeur }}"
+    mode: 0644
+    backup: no
+  with_items:
+    - {option: 'playbook_version', valeur: "{{ version_playbook }}" }
+    - {option: 'role_version', valeur: "{{ version_role }}" }
+    - {option: 'make_version', valeur: "{{ version_make }}" }
+    - {option: 'jour_maj', valeur: "{{ ansible_date_time.weekday }}" }
+    - {option: 'date_maj', valeur: "{{ ansible_date_time.day }}/{{ ansible_date_time.month }}/{{ ansible_date_time.year }}" }
+    - {option: 'heure_maj', valeur: "{{ ansible_date_time.time }}" }
+  when: operation.stat.exists
+
+#***************************** Nettoyage ***************************************
+- name: Suppression du répetoire temporaire de travail.
+  file:
+    path: /root/travail
+    state: absent
+
+- name: Redémarrage du serveur.
+  reboot:
+    msg: "Redémarrage automatique du serveur par ansible."
+    reboot_timeout: 300

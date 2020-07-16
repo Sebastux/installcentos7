@@ -1,0 +1,7 @@
+---
+version_role: "1.2.0"
+version_make: 4.3
+liste_package: [ 'guile-devel', 'libvmmalloc-devel' ]
+
+chemin_install: /opt/compilateurs/make
+chemin_bin: "{{ chemin_install }}/bin/make"
